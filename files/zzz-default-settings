@@ -1,0 +1,103 @@
+#!/bin/sh
+
+# --- luci 设置 ---
+
+# luci 语言设置
+uci set luci.main.lang=zh_cn  # 设置 luci 界面语言为中文
+uci commit luci  # 提交修改
+
+# luci 主题设置
+sed -i "s|bootstrap|argon|" /etc/config/luci  # 将默认的 bootstrap 主题替换为 arogn 主题
+
+# luci 界面调整
+rm -f /usr/lib/lua/luci/view/admin_status/index/mwan.htm
+rm -f /usr/lib/lua/luci/view/admin_status/index/upnp.htm
+rm -f /usr/lib/lua/luci/view/admin_status/index/ddns.htm
+rm -f /usr/lib/lua/luci/view/admin_status/index/minidlna.htm
+
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/aria2.lua
+sed -i 's/services/nas/g' /usr/lib/lua/luci/view/aria2/overview_status.htm
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/hd_idle.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/samba.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/minidlna.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/transmission.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/mjpg-streamer.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/p910nd.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/usb_printer.lua
+sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/xunlei.lua
+sed -i 's/services/nas/g'  /usr/lib/lua/luci/view/minidlna_status.htm
+sed -i 's/cbi.submit\"] = true/cbi.submit\"] = \"1\"/g' /usr/lib/lua/luci/dispatcher.lua
+
+
+
+# --- 系统设置 --- 
+
+# 系统时区设置
+uci set system.@system[0].timezone=CST-8  # 设置系统时区为东八区
+uci set system.@system[0].zonename=Asia/Shanghai  # 设置区域为上海
+uci commit system  # 提交修改
+
+# fstab 设置
+# https://openwrt.org/zh-cn/doc/uci/fstab
+uci set fstab.@global[0].anon_mount=1  # 设置 fstab，开启热插拔自动挂载
+uci commit fstab  # 提交修改
+
+# root 账户的密码设为 password
+sed -i 's/root::0:0:99999:7:::/root:$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.:0:0:99999:7:::/g' /etc/shadow
+
+# 镜像源设置
+sed -i 's_downloads.openwrt.org_mirrors.aliyun.com/openwrt_' /etc/opkg/distfeeds.conf  # 将默认源改为阿里源
+sed -i 's_snapshots_21.02-SNAPSHOT_' /etc/opkg/distfeeds.conf  # 将默认源改为阿里源
+sed -i "s/# //g" /etc/opkg/distfeeds.conf        # 删除所有注释
+sed -i "/oneko/d" /etc/opkg/distfeeds.conf       # 删除因 feeds 产生的无效仓库 oneko
+sed -i "/kenzo/d" /etc/opkg/distfeeds.conf       # 删除因 feeds 产生的无效仓库 kenzo
+sed -i "/small/d" /etc/opkg/distfeeds.conf       # 删除因 feeds 产生的无效仓库 small
+sed -i "/helloworld/d" /etc/opkg/distfeeds.conf  # 删除因 feeds 产生的无效仓库 helloworld
+
+echo 'hsts=0' > /root/.wgetrc  # 关闭 wget 历史记录跟踪
+
+# 设置 dnsmasq 的日志路径
+# https://stackoverflow.com/questions/47548271/disable-wget-history-tracking
+sed -i '/log-facility/d' /etc/dnsmasq.conf
+echo "log-facility=/dev/null" >> /etc/dnsmasq.conf
+
+
+
+# --- 网络设置 --- 
+
+# lan 口地址设置
+sed -i 's_192.168.1.1_192.168.2.254_' /etc/config/network  # 默认地址设为 192.168.2.254
+
+# 默认开启无线
+sed -i '/option disabled/d' /etc/config/wireless  
+sed -i '/set wireless.radio${devidx}.disabled/d' /lib/wifi/mac80211.sh 
+
+# iptables 设置
+sed -i '/REDIRECT --to-ports 53/d' /etc/firewall.user  # 53 端口重定向
+echo "iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53" >> /etc/firewall.user  # udp 53 端口重定向
+echo "iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53" >> /etc/firewall.user  # tcp 53 端口重定向
+
+
+
+# --- bug 修复 ---
+
+# 解决 mwan3 因找不到 ip 命令而无法启动的问题 
+# https://bugs.openwrt.org/index.php?do=details&task_id=1229
+ln -sf /sbin/ip /usr/bin/ip
+
+# 解决更新后 luci 版本号显示错误的问题
+# https://forum.openwrt.org/t/solved-luci-revision-numbers/17590
+rm -rf /tmp/luci-modulecache/
+rm -f /tmp/luci-indexcache
+
+# 解决 cron 定时重启死循环问题
+# https://openwrt.org/zh/docs/guide-user/base-system/cron
+<<<<<<< HEAD
+#echo "30 4 * * * sleep 70 && touch /etc/banner && reboot" >> /etc/crontabs/root
+=======
+30 4 * * * sleep 70 && touch /etc/banner && reboot
+>>>>>>> a0adacd5d67674917ba105d95f255355cf96d15a
+
+# --- 脚本结束，请在此行以上添加/修改 ---
+
+exit 0
