@@ -53,6 +53,8 @@ sed -i "/oneko/d" /etc/opkg/distfeeds.conf       # 删除因 feeds 产生的无�
 sed -i "/kenzo/d" /etc/opkg/distfeeds.conf       # 删除因 feeds 产生的无效仓库 kenzo
 sed -i "/small/d" /etc/opkg/distfeeds.conf       # 删除因 feeds 产生的无效仓库 small
 sed -i "/helloworld/d" /etc/opkg/distfeeds.conf  # 删除因 feeds 产生的无效仓库 helloworld
+sed -i "option check_signature/d" /etc/opkg.conf # 删除自编译镜像使用仓库的验证
+echo "option force_checksum 1" >> /etc/opkg.conf # 关闭自编译镜像使用仓库的验证
 
 echo 'hsts=0' > /root/.wgetrc  # 关闭 wget 历史记录跟踪
 
@@ -92,11 +94,7 @@ rm -f /tmp/luci-indexcache
 
 # 解决 cron 定时重启死循环问题
 # https://openwrt.org/zh/docs/guide-user/base-system/cron
-<<<<<<< HEAD
-#echo "30 4 * * * sleep 70 && touch /etc/banner && reboot" >> /etc/crontabs/root
-=======
-30 4 * * * sleep 70 && touch /etc/banner && reboot
->>>>>>> a0adacd5d67674917ba105d95f255355cf96d15a
+echo "#30 4 * * * sleep 70 && touch /etc/banner && reboot" >> /etc/crontabs/root
 
 # --- 脚本结束，请在此行以上添加/修改 ---
 
